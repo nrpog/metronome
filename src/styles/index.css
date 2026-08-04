@@ -186,6 +186,41 @@ button:disabled {
   font-style: italic;
 }
 
+.quick-steps {
+  display: flex;
+  justify-content: center;
+  gap: 28px;
+  margin-top: -4px;
+}
+
+.step-group {
+  display: flex;
+  gap: 8px;
+}
+
+.step-btn {
+  min-height: 32px;
+  padding: 4px 13px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-dim);
+  font-size: 0.75rem;
+  font-variant-numeric: tabular-nums;
+  transition: background 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.step-btn:hover:not(:disabled) {
+  color: var(--text);
+  border-color: #3b465e;
+}
+
+.step-btn:active:not(:disabled) {
+  transform: scale(0.94);
+  background: var(--accent);
+  color: var(--accent-ink);
+}
+
 /* ---------- sliders ---------- */
 
 .tempo-slider {

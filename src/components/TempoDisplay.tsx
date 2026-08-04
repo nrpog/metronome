@@ -22,6 +22,10 @@ export function TempoDisplay({ bpm, onSetBpm, onNudge }: Props) {
 
   const down = useHoldRepeat(() => nudgeRef.current(-1))
   const up = useHoldRepeat(() => nudgeRef.current(1))
+  const down5 = useHoldRepeat(() => nudgeRef.current(-5))
+  const down10 = useHoldRepeat(() => nudgeRef.current(-10))
+  const up5 = useHoldRepeat(() => nudgeRef.current(5))
+  const up10 = useHoldRepeat(() => nudgeRef.current(10))
 
   const editing = draft !== null
   const shown = editing ? draft : String(bpm)
@@ -70,51 +74,96 @@ export function TempoDisplay({ bpm, onSetBpm, onNudge }: Props) {
   }
 
   return (
-    <div className="tempo-display" ref={wrapRef}>
-      <button
-        type="button"
-        className="nudge"
-        aria-label="Decrease tempo by 1 BPM"
-        disabled={bpm <= MIN_BPM}
-        {...down}
-      >
-        −
-      </button>
+    <>
+      <div className="tempo-display" ref={wrapRef}>
+        <button
+          type="button"
+          className="nudge"
+          aria-label="Decrease tempo by 1 BPM"
+          disabled={bpm <= MIN_BPM}
+          {...down}
+        >
+          −
+        </button>
 
-      <div className="tempo-value">
-        <input
-          className="bpm-input"
-          type="text"
-          inputMode="numeric"
-          pattern="[0-9]*"
-          maxLength={3}
-          value={shown}
-          aria-label="Tempo in beats per minute"
-          onFocus={(event) => {
-            setDraft(String(bpm))
-            event.currentTarget.select()
-          }}
-          onChange={(event) => setDraft(event.target.value.replace(/\D/g, '').slice(0, 3))}
-          onKeyDown={onKeyDown}
-          onBlur={() => editing && commit(shown)}
-        />
-        <div className="tempo-meta">
-          <span className="tempo-unit">BPM</span>
-          <span className="tempo-marking" aria-live="polite">
-            {marking.name}
-          </span>
+        <div className="tempo-value">
+          <input
+            className="bpm-input"
+            type="text"
+            inputMode="numeric"
+            pattern="[0-9]*"
+            maxLength={3}
+            value={shown}
+            aria-label="Tempo in beats per minute"
+            onFocus={(event) => {
+              setDraft(String(bpm))
+              event.currentTarget.select()
+            }}
+            onChange={(event) => setDraft(event.target.value.replace(/\D/g, '').slice(0, 3))}
+            onKeyDown={onKeyDown}
+            onBlur={() => editing && commit(shown)}
+          />
+          <div className="tempo-meta">
+            <span className="tempo-unit">BPM</span>
+            <span className="tempo-marking" aria-live="polite">
+              {marking.name}
+            </span>
+          </div>
         </div>
+
+        <button
+          type="button"
+          className="nudge"
+          aria-label="Increase tempo by 1 BPM"
+          disabled={bpm >= MAX_BPM}
+          {...up}
+        >
+          +
+        </button>
       </div>
 
-      <button
-        type="button"
-        className="nudge"
-        aria-label="Increase tempo by 1 BPM"
-        disabled={bpm >= MAX_BPM}
-        {...up}
-      >
-        +
-      </button>
-    </div>
+      <div className="quick-steps">
+        <div className="step-group" role="group" aria-label="Decrease tempo">
+          <button
+            type="button"
+            className="step-btn"
+            aria-label="Decrease tempo by 10 BPM"
+            disabled={bpm <= MIN_BPM}
+            {...down10}
+          >
+            −10
+          </button>
+          <button
+            type="button"
+            className="step-btn"
+            aria-label="Decrease tempo by 5 BPM"
+            disabled={bpm <= MIN_BPM}
+            {...down5}
+          >
+            −5
+          </button>
+        </div>
+        <div className="step-group" role="group" aria-label="Increase tempo">
+          <button
+            type="button"
+            className="step-btn"
+            aria-label="Increase tempo by 5 BPM"
+            disabled={bpm >= MAX_BPM}
+            {...up5}
+          >
+            +5
+          </button>
+          <button
+            type="button"
+            className="step-btn"
+            aria-label="Increase tempo by 10 BPM"
+            disabled={bpm >= MAX_BPM}
+            {...up10}
+          >
+            +10
+          </button>
+        </div>
+      </div>
+    </>
   )
 }
