@@ -13,24 +13,23 @@ function isTypingTarget(target: EventTarget | null): boolean {
 }
 
 /**
- * True for controls where Space already does something meaningful natively — a focused button
- * fires its click, a checkbox/radio toggles. Overriding Space there would fight the browser
- * (or double-fire) so those are left alone. Text and number fields have no native use for
- * Space, which is what lets the transport shortcut reach through them below.
+ * True only for the transport (Start/Stop) button — a focused button already fires its own
+ * click on Space, and that click already calls toggle(). Every OTHER button (tempo nudges,
+ * marking chips, presets, checkboxes) would otherwise swallow Space for its own click once
+ * focused, which is exactly the bug this guards against: click a −5 button and Space stops
+ * toggling playback and starts nudging tempo instead. Scoping the exemption to just the
+ * transport button is what makes Space "always" start/stop, everywhere else.
  */
-function hasNativeSpaceBehavior(target: EventTarget | null): boolean {
-  if (target instanceof HTMLButtonElement) return true
-  if (target instanceof HTMLInputElement) {
-    return target.type === 'checkbox' || target.type === 'radio'
-  }
-  return false
+function isTransportButton(target: EventTarget | null): boolean {
+  return target instanceof HTMLButtonElement && target.classList.contains('transport')
 }
 
 /**
- * Global tempo/transport keys. Space always starts/stops, even while the tempo field or a
- * practice-panel number input has focus — there's no legitimate use for a space character in
- * either, so swallowing it there would just be a trap. Arrow/page keys stay inert while a field
- * has focus, so typing a tempo or adjusting a slider behaves the way the focused control expects.
+ * Global tempo/transport keys. Space always starts/stops regardless of what has focus — the
+ * tempo field, a nudge button, a checkbox — there's no control in this app where losing Space
+ * to playback toggling costs more than gaining a global shortcut that actually works everywhere.
+ * Arrow/page keys stay inert while a field has focus, so typing a tempo or adjusting a slider
+ * behaves the way the focused control expects.
  */
 export function useKeyboardShortcuts({ onToggle, onNudge }: Handlers): void {
   const handlers = useRef({ onToggle, onNudge })
@@ -43,7 +42,7 @@ export function useKeyboardShortcuts({ onToggle, onNudge }: Handlers): void {
       const { onToggle: toggle, onNudge: nudge } = handlers.current
 
       if (event.key === ' ' || event.key === 'Spacebar') {
-        if (hasNativeSpaceBehavior(event.target)) return
+        if (isTransportButton(event.target)) return
         event.preventDefault()
         toggle()
         return
