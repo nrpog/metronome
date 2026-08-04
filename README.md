@@ -19,6 +19,27 @@ npm run lint       # oxlint
 No backend, no dependencies beyond React — `dist/` is a static folder you can drop on GitHub
 Pages, Netlify, or any static host.
 
+## Deploying
+
+The site is served from **`/metronome/`**, not the domain root. Two settings in
+`vite.config.ts` encode that and must always agree:
+
+- `base` — the URL prefix written into `index.html`, so assets resolve at `/metronome/assets/…`
+- `build.outDir` — `dist/metronome`, so the deploy (which uploads the contents of `dist/` to the
+  document root) puts the app in a folder of that name
+
+To serve from a different path, change `BASE_PATH` in `vite.config.ts`; to serve from the domain
+root, set `base: '/'` and `outDir: 'dist'`. Getting only one of the two right gives you either a
+404 page or a blank page whose assets 404.
+
+`npm run dev` and `npm run preview` follow `base` too — they serve at
+`http://localhost:5173/metronome/`, and redirect there from `/`.
+
+CI is IONOS Deploy Now: `.github/workflows/metronome-orchestration.yaml` runs on every push and
+calls `metronome-build.yaml`, whose `DEPLOYMENT_FOLDER: dist` is the folder that gets uploaded.
+IONOS may regenerate those files if the project is reconfigured in their UI — if a deploy suddenly
+serves 403, check that `DEPLOYMENT_FOLDER` hasn't reverted to its `public` default.
+
 ## Features
 
 **Tempo, 20–300 BPM, six ways**
