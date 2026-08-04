@@ -14,7 +14,10 @@ on:
         type: string
 
 env:
-  DEPLOYMENT_FOLDER: public
+  # Vite writes the built site to dist/. The generated default of public/ holds only the
+  # static files Vite copies verbatim (just the favicon here), so deploying it served a
+  # directory with no index.html — which Apache answers with 403.
+  DEPLOYMENT_FOLDER: dist
 
 jobs:
 # Please do not rename this job
