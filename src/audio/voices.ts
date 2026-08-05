@@ -16,14 +16,22 @@ export interface VoiceDef {
 
 /**
  * Relative loudness per tick type — subdivisions sit under the pulse, beats just under the
- * downbeat. Voices are calibrated so an accent peaks near 0.8 at full volume, which is where
- * the engine's soft ceiling starts; there's no point leaving headroom nobody can hear.
+ * downbeat.
  */
 const LEVEL: Record<TickKind, number> = {
   accent: 1,
   beat: 0.8,
   sub: 0.42,
 }
+
+/**
+ * Overall drive applied on top of LEVEL, pushing the reference accent (level 1) well past the
+ * engine's soft-ceiling knee. LEVEL sets the balance between tick types; DRIVE is the single
+ * knob for how hot the whole signal runs against that ceiling — see MetronomeEngine's volume
+ * curve for how that headroom gets spent (clean around 60–70% on the slider, compressed and
+ * genuinely loud at 100%).
+ */
+const DRIVE = 1.5
 
 const noiseBuffers = new WeakMap<AudioContext, AudioBuffer>()
 
@@ -46,7 +54,7 @@ const EPS = 0.0001
 function envelope(ctx: AudioContext, time: number, peak: number, decay: number): GainNode {
   const gain = ctx.createGain()
   gain.gain.setValueAtTime(EPS, time)
-  gain.gain.exponentialRampToValueAtTime(Math.max(peak, EPS), time + 0.001)
+  gain.gain.exponentialRampToValueAtTime(Math.max(peak * DRIVE, EPS), time + 0.001)
   gain.gain.exponentialRampToValueAtTime(EPS, time + decay)
   return gain
 }
@@ -141,12 +149,17 @@ export const VOICES: ReadonlyArray<VoiceDef> = [
       const level = LEVEL[kind]
       const freq = kind === 'accent' ? 3200 : kind === 'beat' ? 2200 : 1600
       // A narrow band throws away most of the noise energy, so this needs far more gain than
-      // the tone voices to land at the same loudness — Q and peak are calibrated together.
+      // the tone voices to land at the same loudness — Q and peak are calibrated together. That
+      // gain also means the peak sits pinned at the soft ceiling well before DRIVE or the volume
+      // curve can add anything further (measured: raising DRIVE alone left this voice's RMS
+      // almost unchanged). So loudness here comes from decay length instead of peak — a longer
+      // tail banks more energy under an already-maxed peak, verified to raise RMS ~60% at unity
+      // gain without touching Q, which would change the dry, narrow character of the voice.
       noiseBurst(ctx, dest, time, {
         freq,
         q: 3.5,
         peak: 3.8 * level,
-        decay: kind === 'sub' ? 0.018 : 0.03,
+        decay: kind === 'sub' ? 0.027 : 0.045,
       })
     },
   },

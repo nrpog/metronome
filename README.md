@@ -109,12 +109,20 @@ time, kind)` that builds its nodes at `time`. `kind` is `'accent' | 'beat' | 'su
 map in that file keeps relative loudness consistent across voices. Nothing else needs changing:
 the sound picker reads `VOICES`, and `lib/persist.ts` validates stored ids against it.
 
-Calibrate it rather than guessing: voices should peak around **0.8 at full volume** for an accent,
-which is where the engine's soft ceiling begins. Note that gain figures are not comparable across
-synthesis methods — a narrow bandpass discards most of a noise source's energy, which is why the
-studio click needs several times the gain of the tone voices to sound equally loud. Measure with
-an `OfflineAudioContext` (render one tick, take peak and RMS over the first 100 ms) instead of
-tuning by ear.
+Calibrate it rather than guessing: `LEVEL` in `voices.ts` sets the balance between accent/beat/sub,
+and the `DRIVE` constant next to it sets how hot the whole signal runs against the engine's soft
+ceiling (`CEILING_KNEE`/`CEILING_SPREAD` in `MetronomeEngine.ts`) — tune relative loudness with
+one, overall loudness with the other. Note that gain figures are not comparable across synthesis
+methods — a narrow bandpass discards most of a noise source's energy, which is why the studio
+click needs several times the gain of the tone voices to sound equally loud. Measure with an
+`OfflineAudioContext` (render one tick, take peak and RMS over the first 100 ms) instead of tuning
+by ear.
+
+**The volume slider isn't a plain multiplier.** 0–65% ramps linearly up to unity gain — already
+calibrated to run clicks hot against the ceiling, a clean and comfortably loud "normal" range —
+and 65–100% keeps pushing past unity into real compression (`volumeToGain` in
+`MetronomeEngine.ts`), so the top of the slider is a deliberate, denser "too loud" zone rather
+than a linear continuation. The default volume (65%) sits right at that unity point.
 
 ## Verifying a change
 

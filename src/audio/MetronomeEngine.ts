@@ -10,7 +10,10 @@ const SCHEDULE_AHEAD_S = 0.12
 const RESYNC_THRESHOLD_S = 0.25
 
 /** Below this the ceiling is exactly transparent; above it, the knee starts. */
-const CEILING_KNEE = 0.7
+const CEILING_KNEE = 0.65
+/** How gradually the knee folds toward the ceiling — wider than the knee gap itself, so there's
+ * real distance between "just past the knee" and "fully pinned" for the volume curve to use. */
+const CEILING_SPREAD = 0.5
 
 // The explicit buffer type is what WaveShaperNode.curve expects — a bare Float32Array widens to
 // ArrayBufferLike and no longer assigns.
@@ -19,10 +22,11 @@ let ceilingCurve: Float32Array<ArrayBuffer> | null = null
 /**
  * A soft ceiling on the output, as a WaveShaper curve.
  *
- * Now that clicks are calibrated close to full scale, tails can overlap — sixteenths at 300 BPM
- * are 50 ms apart against a 70 ms decay — and the sum would clip harshly. This passes anything
- * under the knee through untouched (so normal clicks keep their exact shape) and folds the rest
- * toward a hard limit. Unlike a compressor it adds no lookahead, which a metronome cannot afford.
+ * Clicks now run hot enough that tails can overlap — sixteenths at 300 BPM are 50 ms apart
+ * against a 70 ms decay — and the sum would clip harshly. This passes anything under the knee
+ * through untouched (so quiet clicks keep their exact shape) and folds the rest toward a hard
+ * limit, gradually enough that driving further past the knee keeps buying real loudness instead
+ * of pinning instantly. Unlike a compressor it adds no lookahead, which a metronome cannot afford.
  */
 function softCeiling(): Float32Array<ArrayBuffer> {
   if (ceilingCurve) return ceilingCurve
@@ -34,11 +38,29 @@ function softCeiling(): Float32Array<ArrayBuffer> {
     const shaped =
       magnitude <= CEILING_KNEE
         ? magnitude
-        : CEILING_KNEE + (1 - CEILING_KNEE) * Math.tanh((magnitude - CEILING_KNEE) / (1 - CEILING_KNEE))
+        : CEILING_KNEE + (1 - CEILING_KNEE) * Math.tanh((magnitude - CEILING_KNEE) / CEILING_SPREAD)
     curve[i] = Math.sign(x) * shaped
   }
   ceilingCurve = curve
   return curve
+}
+
+/** Slider position, 0–1, where the volume curve reaches unity gain. */
+const VOLUME_UNITY_AT = 0.65
+/** Gain at slider position 1 (100%) — driven well past unity, into the ceiling's compression. */
+const VOLUME_MAX_DRIVE = 1.35
+
+/**
+ * The volume slider isn't a plain multiplier: 0–65% ramps linearly up to unity gain, which is
+ * already calibrated to run clicks hot against the soft ceiling — a clean, comfortably loud
+ * "normal" range. 65–100% keeps pushing past unity into real compression, so the top of the
+ * slider is deliberately louder and denser than typical use, not just more of the same.
+ */
+function volumeToGain(volume: number): number {
+  const v = Math.min(Math.max(volume, 0), 1)
+  if (v <= VOLUME_UNITY_AT) return v / VOLUME_UNITY_AT
+  const t = (v - VOLUME_UNITY_AT) / (1 - VOLUME_UNITY_AT)
+  return 1 + t * (VOLUME_MAX_DRIVE - 1)
 }
 
 export interface EngineStats {
@@ -100,7 +122,7 @@ export class MetronomeEngine {
       this.tickInBeat = 0
     }
     if (this.master && this.ctx) {
-      this.master.gain.setTargetAtTime(this.settings.volume, this.ctx.currentTime, 0.01)
+      this.master.gain.setTargetAtTime(volumeToGain(this.settings.volume), this.ctx.currentTime, 0.01)
     }
   }
 
@@ -197,7 +219,7 @@ export class MetronomeEngine {
     if (!this.ctx) {
       this.ctx = new AudioContext()
       this.master = this.ctx.createGain()
-      this.master.gain.setValueAtTime(this.settings.volume, this.ctx.currentTime)
+      this.master.gain.setValueAtTime(volumeToGain(this.settings.volume), this.ctx.currentTime)
       const ceiling = this.ctx.createWaveShaper()
       ceiling.curve = softCeiling()
       ceiling.oversample = '2x'

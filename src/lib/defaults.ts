@@ -10,7 +10,7 @@ export const DEFAULT_SETTINGS: MetronomeSettings = {
   beatsPerBar: 4,
   subdivision: 1,
   voice: 'woodblock',
-  volume: 1,
+  volume: 0.65,
   accentEnabled: true,
   practice: {
     rampEnabled: false,
